@@ -61,6 +61,13 @@ Fill in all the required environment variables:
 6. Copy the connection string → `DATABASE_URL`
    - Format: `postgresql://postgres:[YOUR-PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres`
 
+7. **Configure Google OAuth** (Optional but recommended):
+   - Go to **Authentication** → **Providers** → **Google**
+   - Enable Google provider
+   - Add your Google OAuth credentials (Client ID and Client Secret)
+   - Add authorized redirect URL: `https://[YOUR-PROJECT-REF].supabase.co/auth/v1/callback`
+   - For local development, also add: `http://localhost:3000/auth/callback`
+
 #### Stripe Setup
 
 1. Go to your [Stripe Dashboard](https://dashboard.stripe.com)
@@ -96,17 +103,32 @@ Fill in all the required environment variables:
 
 ### 3. Database Setup
 
-Run the database migrations:
+#### Step 1: Run Drizzle Migrations
 
 ```bash
-# Generate migration files
+# Generate migration files from schema
 npm run db:generate
 
-# Push schema to database
+# Push schema to database (recommended for development)
 npm run db:push
 
-# Or run migrations
+# Or run migrations (for production)
 npm run db:migrate
+```
+
+#### Step 2: Set Up Database Trigger (Important!)
+
+To automatically create user profiles when users sign up, you need to run the trigger migration in your Supabase SQL Editor:
+
+1. Go to your Supabase Dashboard → **SQL Editor**
+2. Copy and paste the contents of `db/migrations/0000_create_profiles_trigger.sql`
+3. Click **Run** to execute the SQL
+
+This creates a database trigger that automatically creates a profile entry in the `profiles` table whenever a new user signs up via Supabase Auth.
+
+Alternatively, you can run it via the Supabase CLI:
+```bash
+supabase db push
 ```
 
 ### 4. Run the Development Server
