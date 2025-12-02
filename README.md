@@ -116,15 +116,19 @@ npm run db:push
 npm run db:migrate
 ```
 
-#### Step 2: Set Up Database Trigger (Important!)
+#### Step 2: Set Up Database Trigger ⚠️ **CRITICAL - DO NOT SKIP!**
 
-To automatically create user profiles when users sign up, you need to run the trigger migration in your Supabase SQL Editor:
+> **⚠️ IMPORTANT:** This step is **REQUIRED** for the application to work correctly. If you skip this step, user sign-ups will fail because profiles won't be automatically created.
+
+To automatically create user profiles when users sign up, you **MUST** run the trigger migration in your Supabase SQL Editor:
 
 1. Go to your Supabase Dashboard → **SQL Editor**
 2. Copy and paste the contents of `db/migrations/0000_create_profiles_trigger.sql`
 3. Click **Run** to execute the SQL
 
 This creates a database trigger that automatically creates a profile entry in the `profiles` table whenever a new user signs up via Supabase Auth.
+
+**Without this trigger, new user registrations will fail!**
 
 Alternatively, you can run it via the Supabase CLI:
 ```bash
@@ -275,8 +279,9 @@ Make sure to set all environment variables in your hosting platform.
 1. **Customize the Landing Page**: Update `app/page.tsx` with your content
 2. **Configure Plans**: Update `lib/config.ts` with your pricing
 3. **Add Features**: Build out your SaaS features in `app/dashboard/`
-4. **Set up Email Templates**: Create email templates in Resend
+4. **Set up Email Templates**: Email templates are included in `lib/emails/` - configure your Resend domain
 5. **Configure SEO**: Update metadata in `app/layout.tsx`
+6. **Run Database Migrations**: After adding new tables (like the example `todos` table), run `npm run db:push` to sync your schema
 
 ## 📚 Documentation
 

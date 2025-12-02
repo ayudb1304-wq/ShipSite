@@ -4,6 +4,8 @@ import { redirect } from "next/navigation"
 import { getUserPlan, formatPrice } from "@/lib/subscriptions"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { getTodos } from "@/actions/todos"
+import { TodoList } from "@/components/todo-list"
 
 export const metadata = {
   title: "Dashboard",
@@ -13,6 +15,7 @@ export const metadata = {
 export default async function DashboardPage() {
   const user = await getUser()
   const userPlan = await getUserPlan()
+  const todos = await getTodos()
 
   if (!user) {
     redirect("/sign-in")
@@ -47,7 +50,46 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Start Here Card */}
+      <Card className="mb-6 border-primary/20 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <span>🚀</span>
+            <span>Start Here</span>
+          </CardTitle>
+          <CardDescription>
+            Welcome to your dashboard! This is a production-ready SaaS starter kit. Below you'll find example features
+            and placeholder stats that you can customize for your needs.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2 text-sm">
+            <p className="font-medium">Quick Links:</p>
+            <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+              <li>
+                <Link href="/dashboard/profile" className="text-primary hover:underline">
+                  Update your profile
+                </Link>
+              </li>
+              <li>
+                <Link href="/dashboard/billing" className="text-primary hover:underline">
+                  Manage billing & subscription
+                </Link>
+              </li>
+              <li>
+                <Link href="/pricing" className="text-primary hover:underline">
+                  View pricing plans
+                </Link>
+              </li>
+            </ul>
+            <p className="pt-2 text-xs text-muted-foreground">
+              💡 <strong>Tip:</strong> Check out the Todo List example below to see how CRUD operations work with Server Actions!
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
@@ -135,6 +177,11 @@ export default async function DashboardPage() {
             <p className="text-xs text-muted-foreground">You are online</p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Todo List Example */}
+      <div className="mt-6">
+        <TodoList initialTodos={todos} />
       </div>
     </div>
   )

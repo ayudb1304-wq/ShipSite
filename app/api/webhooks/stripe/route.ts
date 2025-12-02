@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
 import { stripe } from "@/lib/stripe/server"
 import { db } from "@/db"
-import { subscriptions } from "@/db/schema"
+import { subscriptions, profiles } from "@/db/schema"
 import { eq } from "drizzle-orm"
 import { env } from "@/env.mjs"
 import Stripe from "stripe"
+import { sendSubscriptionConfirmationEmail } from "@/lib/emails"
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
@@ -66,6 +67,13 @@ export async function POST(req: NextRequest) {
 
           const plan = getPlanFromPriceId(subscription.items.data[0]?.price.id)
 
+          // Get user profile for email
+          const [userProfile] = await db
+            .select()
+            .from(profiles)
+            .where(eq(profiles.userId, userId))
+            .limit(1)
+
           if (existingSubscription) {
             await db
               .update(subscriptions)
@@ -92,6 +100,18 @@ export async function POST(req: NextRequest) {
               ),
               status: subscription.status,
               plan: plan,
+            })
+          }
+
+          // Send subscription confirmation email
+          if (userProfile?.email && plan !== "free") {
+            await sendSubscriptionConfirmationEmail({
+              to: userProfile.email,
+              name: userProfile.fullName || undefined,
+              planName: plan.charAt(0).toUpperCase() + plan.slice(1),
+            }).catch((error) => {
+              // Log but don't fail the webhook if email fails
+              console.error("Failed to send subscription confirmation email:", error)
             })
           }
         }
