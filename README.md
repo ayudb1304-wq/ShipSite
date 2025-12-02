@@ -171,7 +171,62 @@ The starter kit uses Supabase Auth with:
 - Google OAuth
 - Protected routes via middleware
 
-See `app/(auth)/` for authentication pages and `middleware.ts` for route protection.
+See `app/sign-in/` and `app/sign-up/` for authentication pages and `middleware.ts` for route protection.
+
+## 💳 Payments
+
+Stripe integration includes:
+
+- **Checkout Sessions**: One-time and subscription payments
+- **Customer Portal**: Self-service subscription management
+- **Webhook Handler**: Automatic subscription status updates
+- **Plan Management**: Free, Pro, and Enterprise tiers
+
+### Setting Up Stripe
+
+1. **Create Products & Prices** in Stripe Dashboard:
+   - Go to [Stripe Products](https://dashboard.stripe.com/products)
+   - Create products for Pro and Enterprise plans
+   - Create monthly and yearly prices for each
+   - Copy the Price IDs
+
+2. **Update Price IDs**:
+   - Option 1: Set environment variables in `.env.local`:
+     ```
+     STRIPE_PRO_PRICE_ID=price_...
+     STRIPE_PRO_PRICE_ID_YEARLY=price_...
+     STRIPE_ENTERPRISE_PRICE_ID=price_...
+     STRIPE_ENTERPRISE_PRICE_ID_YEARLY=price_...
+     ```
+   - Option 2: Update `lib/config.ts` directly
+
+3. **Configure Webhooks**:
+   - Go to [Stripe Webhooks](https://dashboard.stripe.com/webhooks)
+   - Add endpoint: `https://yourdomain.com/api/webhooks/stripe`
+   - Select events:
+     - `checkout.session.completed`
+     - `customer.subscription.updated`
+     - `customer.subscription.deleted`
+   - Copy the webhook signing secret → `STRIPE_WEBHOOK_SECRET`
+
+4. **Local Development**:
+   ```bash
+   # Install Stripe CLI
+   brew install stripe/stripe-cli/stripe
+   
+   # Login
+   stripe login
+   
+   # Forward webhooks to local server
+   stripe listen --forward-to localhost:3000/api/webhooks/stripe
+   
+   # Copy the webhook secret from the output
+   ```
+
+5. **Customer Portal** (Optional):
+   - Go to [Stripe Settings](https://dashboard.stripe.com/settings/billing/portal)
+   - Configure the customer portal settings
+   - Enable features you want customers to access
 
 ## 💳 Payments
 

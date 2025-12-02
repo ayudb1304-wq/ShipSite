@@ -1,6 +1,9 @@
 import { getUser } from "@/actions/auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { redirect } from "next/navigation"
+import { getUserPlan, formatPrice } from "@/lib/subscriptions"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 export const metadata = {
   title: "Dashboard",
@@ -9,6 +12,7 @@ export const metadata = {
 
 export default async function DashboardPage() {
   const user = await getUser()
+  const userPlan = await getUserPlan()
 
   if (!user) {
     redirect("/sign-in")
@@ -16,11 +20,31 @@ export default async function DashboardPage() {
 
   return (
     <div className="container py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Welcome back, {user.profile?.fullName || user.email}!
-        </p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome back, {user.profile?.fullName || user.email}!
+          </p>
+        </div>
+        {userPlan.plan === "free" && (
+          <Button asChild>
+            <Link href="/pricing">Upgrade Plan</Link>
+          </Button>
+        )}
+      </div>
+
+      <div className="mb-6 rounded-lg border bg-card p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Current Plan</p>
+            <p className="text-2xl font-bold capitalize">{userPlan.plan}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-muted-foreground">Status</p>
+            <p className="text-sm font-medium capitalize">{userPlan.status}</p>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
