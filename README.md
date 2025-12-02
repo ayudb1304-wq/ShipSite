@@ -1,0 +1,221 @@
+# SaaS Starter Kit
+
+A production-ready SaaS boilerplate built with Next.js 14+, Supabase, Stripe, and modern tooling. This starter kit provides everything you need to launch a monetizable SaaS product quickly.
+
+## 🚀 Features
+
+- **Next.js 14+** with App Router and TypeScript (strict mode)
+- **Authentication** via Supabase Auth (Google & Magic Link)
+- **Payments** with Stripe (Checkout & Customer Portal)
+- **Database** using Supabase PostgreSQL with Drizzle ORM
+- **Email** via Resend for transactional emails
+- **Analytics** with PostHog (optional)
+- **UI Components** built with Shadcn/UI and Tailwind CSS
+- **SEO Optimized** with metadata, sitemap, and robots.txt
+- **Type-Safe** environment variables with Zod validation
+
+## 📋 Prerequisites
+
+Before you begin, ensure you have:
+
+- Node.js 18+ installed
+- A Supabase account and project
+- A Stripe account
+- A Resend account (for emails)
+- (Optional) A PostHog account for analytics
+
+## 🛠️ Setup Instructions
+
+### 1. Clone and Install
+
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd saas-starter-kit
+
+# Install dependencies
+npm install
+```
+
+### 2. Environment Variables
+
+Copy the `.env.example` file to `.env.local`:
+
+```bash
+cp .env.example .env.local
+```
+
+Fill in all the required environment variables:
+
+#### Supabase Setup
+
+1. Go to your [Supabase Dashboard](https://app.supabase.com)
+2. Create a new project or use an existing one
+3. Go to **Settings** → **API**
+4. Copy the following:
+   - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
+   - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY`
+
+5. Go to **Settings** → **Database**
+6. Copy the connection string → `DATABASE_URL`
+   - Format: `postgresql://postgres:[YOUR-PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres`
+
+#### Stripe Setup
+
+1. Go to your [Stripe Dashboard](https://dashboard.stripe.com)
+2. Navigate to **Developers** → **API keys**
+3. Copy:
+   - `Publishable key` → `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+   - `Secret key` → `STRIPE_SECRET_KEY`
+
+4. Create products and prices in Stripe Dashboard
+5. Update `lib/config.ts` with your Price IDs, or set them in `.env.local`:
+   ```
+   STRIPE_PRO_PRICE_ID=price_...
+   STRIPE_PRO_PRICE_ID_YEARLY=price_...
+   ```
+
+6. For webhooks (local development):
+   - Install Stripe CLI: `brew install stripe/stripe-cli/stripe`
+   - Login: `stripe login`
+   - Forward webhooks: `stripe listen --forward-to localhost:3000/api/webhooks/stripe`
+   - Copy the webhook signing secret → `STRIPE_WEBHOOK_SECRET`
+
+#### Resend Setup
+
+1. Go to [Resend](https://resend.com) and create an account
+2. Navigate to **API Keys**
+3. Create a new API key → `RESEND_API_KEY`
+
+#### PostHog Setup (Optional)
+
+1. Go to [PostHog](https://posthog.com) and create an account
+2. Get your Project API Key → `NEXT_PUBLIC_POSTHOG_KEY`
+3. Set your host → `NEXT_PUBLIC_POSTHOG_HOST` (default: `https://us.i.posthog.com`)
+
+### 3. Database Setup
+
+Run the database migrations:
+
+```bash
+# Generate migration files
+npm run db:generate
+
+# Push schema to database
+npm run db:push
+
+# Or run migrations
+npm run db:migrate
+```
+
+### 4. Run the Development Server
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## 📁 Project Structure
+
+```
+├── app/                    # Next.js App Router
+│   ├── (auth)/            # Auth routes
+│   ├── (dashboard)/       # Protected dashboard routes
+│   ├── api/               # API routes (webhooks only)
+│   ├── layout.tsx         # Root layout with metadata
+│   └── page.tsx           # Landing page
+├── components/
+│   ├── ui/                # Shadcn/UI components
+│   └── features/          # Feature-specific components
+├── lib/
+│   ├── supabase/          # Supabase clients
+│   ├── stripe/            # Stripe clients
+│   ├── config.ts          # Stripe plan configuration
+│   └── utils.ts           # Utility functions
+├── db/
+│   ├── schema.ts          # Drizzle schema definitions
+│   └── index.ts           # Database connection
+├── actions/               # Server Actions
+└── env.mjs                # Type-safe env validation
+```
+
+## 🔐 Authentication
+
+The starter kit uses Supabase Auth with:
+
+- Email/Password (Magic Link)
+- Google OAuth
+- Protected routes via middleware
+
+See `app/(auth)/` for authentication pages and `middleware.ts` for route protection.
+
+## 💳 Payments
+
+Stripe integration includes:
+
+- Checkout Sessions (one-time and subscriptions)
+- Customer Portal for subscription management
+- Webhook handler for subscription events
+- Plan configuration in `lib/config.ts`
+
+## 📧 Email
+
+Resend is configured for transactional emails. See `actions/` for email actions.
+
+## 🎨 UI Components
+
+Built with Shadcn/UI and Tailwind CSS. All components are in `components/ui/`.
+
+To add more Shadcn components:
+
+```bash
+npx shadcn-ui@latest add [component-name]
+```
+
+## 🚢 Deployment
+
+### Vercel (Recommended)
+
+1. Push your code to GitHub
+2. Import your repository in [Vercel](https://vercel.com)
+3. Add all environment variables
+4. Deploy!
+
+### Other Platforms
+
+The app can be deployed to any platform that supports Next.js:
+- Netlify
+- Railway
+- AWS
+- DigitalOcean
+
+Make sure to set all environment variables in your hosting platform.
+
+## 📝 Next Steps
+
+1. **Customize the Landing Page**: Update `app/page.tsx` with your content
+2. **Configure Plans**: Update `lib/config.ts` with your pricing
+3. **Add Features**: Build out your SaaS features in `app/(dashboard)/`
+4. **Set up Email Templates**: Create email templates in Resend
+5. **Configure SEO**: Update metadata in `app/layout.tsx`
+
+## 🤝 Contributing
+
+This is a starter kit template. Feel free to fork and customize for your needs!
+
+## 📄 License
+
+MIT License - feel free to use this for your projects.
+
+## 🆘 Support
+
+For issues and questions:
+- Check the documentation
+- Open an issue on GitHub
+- Review the code comments
+
+---
+
+Built with ❤️ using Next.js, Supabase, and Stripe
