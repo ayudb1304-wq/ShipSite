@@ -1,6 +1,6 @@
 # Multi-Provider Payment Architecture
 
-This document explains how to configure and use the multi-provider payment system in ShipSite. The architecture supports Stripe, Lemon Squeezy, Razorpay, and Dodo Payments through a unified adapter pattern.
+This document explains how to configure and use the multi-provider payment system in GitKit-Web. The architecture supports Stripe, Lemon Squeezy, Razorpay, and Dodo Payments through a unified adapter pattern.
 
 ## Table of Contents
 
