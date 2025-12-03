@@ -225,6 +225,10 @@ That's it! The entire application will automatically use the selected provider.
 
 ## Database Schema
 
+The database uses a provider-agnostic schema that supports all payment providers uniformly.
+
+### Tables
+
 The subscriptions table is provider-agnostic:
 
 ```sql
@@ -245,17 +249,37 @@ CREATE TABLE subscriptions (
 
 ### Migration
 
-Run the migration to update your database:
+#### For First-Time Setup (Fresh Database)
+
+If you're setting up the database for the first time, run:
+
+```bash
+npm run db:push
+```
+
+Or apply the initial migration manually:
+
+```bash
+psql $DATABASE_URL < db/migrations/0000_initial_schema.sql
+```
+
+This creates all tables with the correct multi-provider schema from the start.
+
+#### For Existing Databases (Upgrading from Stripe-only)
+
+If you have an existing database with the old Stripe-specific schema, run:
 
 ```bash
 npm run db:migrate
 ```
 
-Or apply manually:
+Or apply the refactor migration manually:
 
 ```bash
 psql $DATABASE_URL < db/migrations/0001_refactor_subscriptions_multi_provider.sql
 ```
+
+**Note:** The refactor migration is safe to run even on fresh databases - it will detect if the old columns exist and only migrate if needed.
 
 ## Configuration
 

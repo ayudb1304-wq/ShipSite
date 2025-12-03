@@ -59,12 +59,13 @@ cp .env.example .env.local
 ## Step 6: Set Up Database (1 minute)
 
 ```bash
-# Push schema to database
+# Push schema to database (creates all tables including trigger)
 npm run db:push
 
-# Run trigger migration in Supabase SQL Editor
-# Copy contents of db/migrations/0000_create_profiles_trigger.sql
+# OR manually run the initial migration in Supabase SQL Editor:
+# Copy contents of db/migrations/0000_initial_schema.sql
 # Paste in Supabase Dashboard → SQL Editor → Run
+# (This includes the profile creation trigger)
 ```
 
 ## Step 7: Start Development Server

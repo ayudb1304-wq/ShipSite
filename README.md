@@ -116,24 +116,32 @@ npm run db:push
 npm run db:migrate
 ```
 
-#### Step 2: Set Up Database Trigger ⚠️ **CRITICAL - DO NOT SKIP!**
+#### Step 2: Apply Database Migrations
 
-> **⚠️ IMPORTANT:** This step is **REQUIRED** for the application to work correctly. If you skip this step, user sign-ups will fail because profiles won't be automatically created.
+The initial migration (`0000_initial_schema.sql`) creates all tables including:
+- `profiles` table with automatic user profile creation trigger
+- `subscriptions` table with multi-provider payment support
+- `todos` table for the example feature
 
-To automatically create user profiles when users sign up, you **MUST** run the trigger migration in your Supabase SQL Editor:
+**For Fresh Databases (First-Time Setup):**
+
+The `db:push` command will create all tables with the correct schema. Alternatively, you can run the initial migration manually:
 
 1. Go to your Supabase Dashboard → **SQL Editor**
-2. Copy and paste the contents of `db/migrations/0000_create_profiles_trigger.sql`
+2. Copy and paste the contents of `db/migrations/0000_initial_schema.sql`
 3. Click **Run** to execute the SQL
 
-This creates a database trigger that automatically creates a profile entry in the `profiles` table whenever a new user signs up via Supabase Auth.
+**For Existing Databases (Upgrading):**
 
-**Without this trigger, new user registrations will fail!**
+If you have an existing database with the old Stripe-only schema, run:
 
-Alternatively, you can run it via the Supabase CLI:
 ```bash
-supabase db push
+npm run db:migrate
 ```
+
+This will apply the refactor migration (`0001_refactor_subscriptions_multi_provider.sql`) which safely migrates your existing data to the new multi-provider schema.
+
+> **⚠️ IMPORTANT:** The initial migration includes a database trigger that automatically creates user profiles when users sign up. Without this trigger, new user registrations will fail!
 
 ### 4. Run the Development Server
 
@@ -157,8 +165,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │   └── features/          # Feature-specific components
 ├── lib/
 │   ├── supabase/          # Supabase clients
-│   ├── stripe/            # Stripe clients
-│   ├── config.ts          # Stripe plan configuration
+│   ├── payments/          # Multi-provider payment adapters
+│   ├── config.ts          # Multi-provider plan configuration
 │   └── utils.ts           # Utility functions
 ├── db/
 │   ├── schema.ts          # Drizzle schema definitions
@@ -179,14 +187,16 @@ See `app/sign-in/` and `app/sign-up/` for authentication pages and `middleware.t
 
 ## 💳 Payments
 
-Stripe integration includes:
+The starter kit supports multiple payment providers through a unified adapter pattern:
 
-- **Checkout Sessions**: One-time and subscription payments
-- **Customer Portal**: Self-service subscription management
-- **Webhook Handler**: Automatic subscription status updates
-- **Plan Management**: Free, Pro, and Enterprise tiers
+- **Stripe** (default)
+- **Lemon Squeezy**
+- **Razorpay**
+- **Dodo Payments**
 
-### Setting Up Stripe
+Switch providers by setting `NEXT_PUBLIC_PAYMENT_PROVIDER` in your `.env` file. See [docs/PAYMENTS.md](./docs/PAYMENTS.md) for detailed setup instructions for each provider.
+
+### Setting Up Stripe (Default)
 
 1. **Create Products & Prices** in Stripe Dashboard:
    - Go to [Stripe Products](https://dashboard.stripe.com/products)
@@ -232,14 +242,9 @@ Stripe integration includes:
    - Configure the customer portal settings
    - Enable features you want customers to access
 
-## 💳 Payments
+## 💳 Multi-Provider Payments
 
-Stripe integration includes:
-
-- Checkout Sessions (one-time and subscriptions)
-- Customer Portal for subscription management
-- Webhook handler for subscription events
-- Plan configuration in `lib/config.ts`
+The payment system supports multiple providers (Stripe, Lemon Squeezy, Razorpay, Dodo) through a unified interface. See [docs/PAYMENTS.md](./docs/PAYMENTS.md) for complete setup instructions.
 
 ## 📧 Email
 
