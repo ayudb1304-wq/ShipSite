@@ -1,13 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { STRIPE_PLANS } from "@/lib/config"
+import { PLANS } from "@/lib/config"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Check } from "lucide-react"
-import { createCheckoutSession } from "@/actions/stripe"
+import { createCheckoutSession } from "@/actions/payments"
 import { formatPrice } from "@/lib/subscriptions"
 import Link from "next/link"
+import type { PlanType } from "@/lib/config"
 
 export function PricingSection() {
   const [isYearly, setIsYearly] = useState(false)
@@ -46,10 +47,9 @@ export function PricingSection() {
       </div>
 
       <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
-        {Object.entries(STRIPE_PLANS).map(([key, plan]) => {
+        {Object.entries(PLANS).map(([key, plan]) => {
           const isCurrentPlan = false // You can add logic to check user's current plan
           const isPro = key === "PRO"
-          const priceId = isYearly && plan.priceIdYearly ? plan.priceIdYearly : plan.priceId
           const displayPrice = isYearly && plan.price > 0 ? plan.price * 12 * 0.8 : plan.price
 
           return (
@@ -88,8 +88,8 @@ export function PricingSection() {
                 </ul>
               </CardContent>
               <CardFooter>
-                {priceId ? (
-                  <form action={createCheckoutSession.bind(null, priceId)} className="w-full">
+                {plan.price > 0 ? (
+                  <form action={createCheckoutSession.bind(null, key as PlanType, isYearly)} className="w-full">
                     <Button
                       type="submit"
                       variant={isPro ? "default" : "outline"}

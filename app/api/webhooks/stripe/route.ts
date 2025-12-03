@@ -1,159 +1,155 @@
 import { NextRequest, NextResponse } from "next/server"
-import { headers } from "next/headers"
-import { stripe } from "@/lib/stripe/server"
+import { getPaymentProvider } from "@/lib/payments"
 import { db } from "@/db"
 import { subscriptions, profiles } from "@/db/schema"
-import { eq } from "drizzle-orm"
-import { env } from "@/env.mjs"
-import Stripe from "stripe"
+import { eq, and } from "drizzle-orm"
+import { getPlanFromVariantId } from "@/lib/config"
 import { sendSubscriptionConfirmationEmail } from "@/lib/emails"
 
+/**
+ * Stripe Webhook Handler
+ * 
+ * Processes Stripe webhook events and updates the database using the
+ * provider-agnostic schema. Uses the Stripe payment adapter for event processing.
+ */
 export async function POST(req: NextRequest) {
-  const body = await req.text()
-  const headersList = await headers()
-  const signature = headersList.get("stripe-signature")
-
-  if (!signature) {
-    return NextResponse.json(
-      { error: "No signature" },
-      { status: 400 }
-    )
-  }
-
-  let event: Stripe.Event
-
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      env.STRIPE_WEBHOOK_SECRET
-    )
-  } catch (err) {
-    console.error("Webhook signature verification failed:", err)
-    return NextResponse.json(
-      { error: "Invalid signature" },
-      { status: 400 }
-    )
-  }
+    const provider = getPaymentProvider()
+    // Clone the request to avoid body consumption issues
+    const body = await req.text()
+    const headers = new Headers()
+    req.headers.forEach((value, key) => {
+      headers.set(key, value)
+    })
+    const request = new Request(req.url, {
+      method: req.method,
+      headers: headers,
+      body: body,
+    })
+    const webhookData = await provider.handleWebhook(request)
 
-  try {
-    switch (event.type) {
+    const userId = webhookData.metadata?.user_id
+
+    if (!userId && webhookData.event === "checkout.session.completed") {
+      console.error("No userId in webhook metadata")
+      return NextResponse.json({ error: "No userId" }, { status: 400 })
+    }
+
+    // Map provider status to our internal status
+    const status = provider.mapStatus(webhookData.status)
+
+    // Get plan from variant ID
+    const planKey = webhookData.priceId
+      ? getPlanFromVariantId(webhookData.priceId, "stripe")
+      : null
+    const plan = planKey ? planKey.toLowerCase() : "free"
+
+    switch (webhookData.event) {
       case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session
+        if (!userId) break
 
-        if (session.mode === "subscription" && session.customer) {
-          const customerId =
-            typeof session.customer === "string"
-              ? session.customer
-              : session.customer.id
+        // Update or create subscription record
+        const [existingSubscription] = await db
+          .select()
+          .from(subscriptions)
+          .where(eq(subscriptions.userId, userId))
+          .limit(1)
 
-          const subscription = await stripe.subscriptions.retrieve(
-            session.subscription as string
-          )
+        // Get user profile for email
+        const [userProfile] = await db
+          .select()
+          .from(profiles)
+          .where(eq(profiles.userId, userId))
+          .limit(1)
 
-          const userId = session.metadata?.userId
-
-          if (!userId) {
-            console.error("No userId in session metadata")
-            break
-          }
-
-          // Update or create subscription record
-          const [existingSubscription] = await db
-            .select()
-            .from(subscriptions)
-            .where(eq(subscriptions.userId, userId))
-            .limit(1)
-
-          const plan = getPlanFromPriceId(subscription.items.data[0]?.price.id)
-
-          // Get user profile for email
-          const [userProfile] = await db
-            .select()
-            .from(profiles)
-            .where(eq(profiles.userId, userId))
-            .limit(1)
-
-          if (existingSubscription) {
-            await db
-              .update(subscriptions)
-              .set({
-                stripeCustomerId: customerId,
-                stripeSubscriptionId: subscription.id,
-                stripePriceId: subscription.items.data[0]?.price.id,
-                stripeCurrentPeriodEnd: new Date(
-                  subscription.current_period_end * 1000
-                ),
-                status: subscription.status,
-                plan: plan,
-                updatedAt: new Date(),
-              })
-              .where(eq(subscriptions.userId, userId))
-          } else {
-            await db.insert(subscriptions).values({
-              userId: userId,
-              stripeCustomerId: customerId,
-              stripeSubscriptionId: subscription.id,
-              stripePriceId: subscription.items.data[0]?.price.id,
-              stripeCurrentPeriodEnd: new Date(
-                subscription.current_period_end * 1000
-              ),
-              status: subscription.status,
+        if (existingSubscription) {
+          await db
+            .update(subscriptions)
+            .set({
+              provider: "stripe",
+              customerId: webhookData.customerId,
+              subscriptionId: webhookData.subscriptionId || null,
+              priceId: webhookData.priceId,
+              currentPeriodEnd: webhookData.currentPeriodEnd,
+              status: status,
               plan: plan,
+              updatedAt: new Date(),
             })
-          }
+            .where(eq(subscriptions.userId, userId))
+        } else {
+          await db.insert(subscriptions).values({
+            userId: userId,
+            provider: "stripe",
+            customerId: webhookData.customerId,
+            subscriptionId: webhookData.subscriptionId || null,
+            priceId: webhookData.priceId,
+            currentPeriodEnd: webhookData.currentPeriodEnd,
+            status: status,
+            plan: plan,
+          })
+        }
 
-          // Send subscription confirmation email
-          if (userProfile?.email && plan !== "free") {
-            await sendSubscriptionConfirmationEmail({
-              to: userProfile.email,
-              name: userProfile.fullName || undefined,
-              planName: plan.charAt(0).toUpperCase() + plan.slice(1),
-            }).catch((error) => {
-              // Log but don't fail the webhook if email fails
-              console.error("Failed to send subscription confirmation email:", error)
-            })
-          }
+        // Send subscription confirmation email
+        if (userProfile?.email && plan !== "free") {
+          await sendSubscriptionConfirmationEmail({
+            to: userProfile.email,
+            name: userProfile.fullName || undefined,
+            planName: plan.charAt(0).toUpperCase() + plan.slice(1),
+          }).catch((error) => {
+            // Log but don't fail the webhook if email fails
+            console.error("Failed to send subscription confirmation email:", error)
+          })
         }
         break
       }
 
       case "customer.subscription.updated": {
-        const subscription = event.data.object as Stripe.Subscription
+        if (!webhookData.subscriptionId) break
 
-        // Find subscription by stripeSubscriptionId
+        // Find subscription by subscriptionId and provider
         const [existingSubscription] = await db
           .select()
           .from(subscriptions)
-          .where(eq(subscriptions.stripeSubscriptionId, subscription.id))
+          .where(
+            and(
+              eq(subscriptions.subscriptionId, webhookData.subscriptionId),
+              eq(subscriptions.provider, "stripe")
+            )
+          )
           .limit(1)
 
         if (existingSubscription) {
-          const plan = getPlanFromPriceId(subscription.items.data[0]?.price.id)
-
           await db
             .update(subscriptions)
             .set({
-              stripePriceId: subscription.items.data[0]?.price.id,
-              stripeCurrentPeriodEnd: new Date(
-                subscription.current_period_end * 1000
-              ),
-              status: subscription.status,
+              priceId: webhookData.priceId,
+              currentPeriodEnd: webhookData.currentPeriodEnd,
+              status: status,
               plan: plan,
               updatedAt: new Date(),
             })
-            .where(eq(subscriptions.stripeSubscriptionId, subscription.id))
+            .where(
+              and(
+                eq(subscriptions.subscriptionId, webhookData.subscriptionId),
+                eq(subscriptions.provider, "stripe")
+              )
+            )
         }
         break
       }
 
       case "customer.subscription.deleted": {
-        const subscription = event.data.object as Stripe.Subscription
+        if (!webhookData.subscriptionId) break
 
         const [existingSubscription] = await db
           .select()
           .from(subscriptions)
-          .where(eq(subscriptions.stripeSubscriptionId, subscription.id))
+          .where(
+            and(
+              eq(subscriptions.subscriptionId, webhookData.subscriptionId),
+              eq(subscriptions.provider, "stripe")
+            )
+          )
           .limit(1)
 
         if (existingSubscription) {
@@ -161,57 +157,29 @@ export async function POST(req: NextRequest) {
             .update(subscriptions)
             .set({
               status: "canceled",
-              stripeSubscriptionId: null,
+              subscriptionId: null,
               updatedAt: new Date(),
             })
-            .where(eq(subscriptions.stripeSubscriptionId, subscription.id))
+            .where(
+              and(
+                eq(subscriptions.subscriptionId, webhookData.subscriptionId),
+                eq(subscriptions.provider, "stripe")
+              )
+            )
         }
         break
       }
 
       default:
-        console.log(`Unhandled event type: ${event.type}`)
+        console.log(`Unhandled event type: ${webhookData.event}`)
     }
 
     return NextResponse.json({ received: true })
   } catch (error) {
     console.error("Webhook handler error:", error)
     return NextResponse.json(
-      { error: "Webhook handler failed" },
+      { error: error instanceof Error ? error.message : "Webhook handler failed" },
       { status: 500 }
     )
   }
-}
-
-function getPlanFromPriceId(priceId: string | undefined): string {
-  if (!priceId) return "free"
-
-  // Check against configured price IDs
-  // Import dynamically to avoid issues
-  const STRIPE_PLANS = {
-    PRO: {
-      priceId: process.env.STRIPE_PRO_PRICE_ID || "price_pro_monthly",
-      priceIdYearly: process.env.STRIPE_PRO_PRICE_ID_YEARLY || "price_pro_yearly",
-    },
-    ENTERPRISE: {
-      priceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || "price_enterprise_monthly",
-      priceIdYearly: process.env.STRIPE_ENTERPRISE_PRICE_ID_YEARLY || "price_enterprise_yearly",
-    },
-  }
-
-  if (
-    priceId === STRIPE_PLANS.PRO.priceId ||
-    priceId === STRIPE_PLANS.PRO.priceIdYearly
-  ) {
-    return "pro"
-  }
-
-  if (
-    priceId === STRIPE_PLANS.ENTERPRISE.priceId ||
-    priceId === STRIPE_PLANS.ENTERPRISE.priceIdYearly
-  ) {
-    return "enterprise"
-  }
-
-  return "free"
 }
