@@ -18,10 +18,11 @@ export const subscriptions = pgTable("subscriptions", {
     .primaryKey()
     .$defaultFn(() => createId()),
   userId: text("user_id").notNull(),
-  stripeCustomerId: text("stripe_customer_id").notNull().unique(),
-  stripeSubscriptionId: text("stripe_subscription_id").unique(),
-  stripePriceId: text("stripe_price_id"),
-  stripeCurrentPeriodEnd: timestamp("stripe_current_period_end"),
+  provider: text("provider").notNull(), // 'stripe', 'lemonsqueezy', 'razorpay', 'dodo'
+  customerId: text("customer_id").notNull().unique(),
+  subscriptionId: text("subscription_id").unique(),
+  priceId: text("price_id"),
+  currentPeriodEnd: timestamp("current_period_end"),
   status: text("status").notNull(), // active, canceled, past_due, etc.
   plan: text("plan").notNull(), // free, pro, enterprise
   createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -1,5 +1,5 @@
-import { getUserSubscription } from "@/actions/stripe"
-import { STRIPE_PLANS } from "@/lib/config"
+import { getUserSubscription } from "@/actions/payments"
+import { PLANS } from "@/lib/config"
 
 export async function getUserPlan() {
   const subscription = await getUserSubscription()
@@ -22,7 +22,9 @@ export async function getUserPlan() {
       | "canceled"
       | "past_due"
       | "trialing"
-      | "incomplete",
+      | "incomplete"
+      | "unpaid"
+      | "paused",
     subscription,
   }
 }
@@ -39,5 +41,5 @@ export function formatPrice(price: number): string {
 }
 
 export function getPlanFeatures(plan: "free" | "pro" | "enterprise") {
-  return STRIPE_PLANS[plan.toUpperCase() as keyof typeof STRIPE_PLANS].features
+  return PLANS[plan.toUpperCase() as keyof typeof PLANS].features
 }

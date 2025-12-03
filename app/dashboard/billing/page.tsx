@@ -1,11 +1,12 @@
 import { getUserPlan, formatPrice } from "@/lib/subscriptions"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { createCustomerPortalSession } from "@/actions/stripe"
-import { STRIPE_PLANS } from "@/lib/config"
+import { createCustomerPortalSession } from "@/actions/payments"
+import { PLANS } from "@/lib/config"
 import { Check } from "lucide-react"
 import { redirect } from "next/navigation"
 import { getUser } from "@/actions/auth"
+import { getPaymentProviderName } from "@/lib/payments"
 
 export const metadata = {
   title: "Billing",
@@ -20,7 +21,8 @@ export default async function BillingPage() {
   }
 
   const userPlan = await getUserPlan()
-  const currentPlan = STRIPE_PLANS[userPlan.plan.toUpperCase() as keyof typeof STRIPE_PLANS]
+  const currentPlan = PLANS[userPlan.plan.toUpperCase() as keyof typeof PLANS]
+  const providerName = getPaymentProviderName()
 
   return (
     <div className="container py-10">
@@ -46,7 +48,7 @@ export default async function BillingPage() {
               </p>
             </div>
 
-            {userPlan.subscription && (
+                {userPlan.subscription && (
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Status:</span>
@@ -54,16 +56,22 @@ export default async function BillingPage() {
                     {userPlan.subscription.status}
                   </span>
                 </div>
-                {userPlan.subscription.stripeCurrentPeriodEnd && (
+                {userPlan.subscription.currentPeriodEnd && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Renews on:</span>
                     <span className="font-medium">
                       {new Date(
-                        userPlan.subscription.stripeCurrentPeriodEnd
+                        userPlan.subscription.currentPeriodEnd
                       ).toLocaleDateString()}
                     </span>
                   </div>
                 )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Provider:</span>
+                  <span className="font-medium capitalize">
+                    {userPlan.subscription.provider}
+                  </span>
+                </div>
               </div>
             )}
 
@@ -90,7 +98,7 @@ export default async function BillingPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Use the Stripe Customer Portal to manage your subscription, update
+              Use the {providerName.charAt(0).toUpperCase() + providerName.slice(1)} Customer Portal to manage your subscription, update
               payment methods, view invoices, and more.
             </p>
             <form action={createCustomerPortalSession}>
@@ -99,7 +107,7 @@ export default async function BillingPage() {
               </Button>
             </form>
             <p className="text-xs text-muted-foreground">
-              You&apos;ll be redirected to Stripe to manage your subscription
+              You&apos;ll be redirected to {providerName.charAt(0).toUpperCase() + providerName.slice(1)} to manage your subscription
               securely.
             </p>
           </CardContent>

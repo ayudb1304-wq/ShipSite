@@ -1,8 +1,9 @@
-import { STRIPE_PLANS } from "@/lib/config"
+import { PLANS } from "@/lib/config"
+import type { PlanType } from "@/lib/config"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Check } from "lucide-react"
-import { createCheckoutSession } from "@/actions/stripe"
+import { createCheckoutSession } from "@/actions/payments"
 import { getUserPlan, formatPrice } from "@/lib/subscriptions"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
@@ -46,7 +47,7 @@ export default async function PricingPage({
         )}
 
         <div className="mx-auto mt-16 grid max-w-5xl gap-8 md:grid-cols-3">
-          {Object.entries(STRIPE_PLANS).map(([key, plan]) => {
+          {Object.entries(PLANS).map(([key, plan]) => {
             const isCurrentPlan = userPlan.plan === key.toLowerCase()
             const isPro = key === "PRO"
 
@@ -84,8 +85,8 @@ export default async function PricingPage({
                   </ul>
                 </CardContent>
                 <CardFooter>
-                  {plan.priceId ? (
-                    <form action={createCheckoutSession.bind(null, plan.priceId)} className="w-full">
+                  {plan.price > 0 ? (
+                    <form action={createCheckoutSession.bind(null, key as PlanType, false)} className="w-full">
                       <Button
                         type="submit"
                         variant={isPro ? "default" : "outline"}

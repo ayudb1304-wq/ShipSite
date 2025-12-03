@@ -56,9 +56,10 @@ Common issues and solutions when working with the SaaS Starter Kit.
 - Dashboard shows errors
 
 **Solutions:**
-1. Run the database trigger migration:
+1. Run the initial schema migration:
    ```sql
-   -- Copy from db/migrations/0000_create_profiles_trigger.sql
+   -- Copy from db/migrations/0000_initial_schema.sql
+   -- This includes the profile creation trigger
    ```
 2. Check trigger exists in Supabase SQL Editor
 3. Verify trigger function is working
