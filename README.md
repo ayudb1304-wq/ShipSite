@@ -1,4 +1,4 @@
-# ⚡️ The "ShipSite" Stack
+# ⚡️ The "GitKit" Stack
 
 Built for developers who want to ship, not configure. This is not just a template; it's an opinionated, production-grade architecture.
 
